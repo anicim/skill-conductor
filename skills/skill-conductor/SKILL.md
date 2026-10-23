@@ -14,7 +14,9 @@ Use Codex `$skill-creator` for a straightforward first draft. Use Conductor when
 
 ## Runtime requirements (pre-flight)
 
-Before any mode that touches scripts (CREATE, IMPROVE, VALIDATE, OPTIMIZE, PACKAGE), check `uv` using **`references/runtime-setup.md`**. Before automated trigger evals or description optimization, verify Codex CLI login there. If `uv` is absent, stop and tell the user.
+Before any mode that touches scripts (CREATE, IMPROVE, VALIDATE, OPTIMIZE, PACKAGE), check `uv` using **`references/runtime-setup.md`**. Before automated trigger evals or description optimization, verify Codex CLI login there. If multiple Codex CLIs are installed, set `SKILL_CONDUCTOR_CODEX` to the full executable path. If `uv` is absent, stop and tell the user.
+
+From the skill directory, run `uv run scripts/test_smoke.py` to verify the local scripts. The smoke suite uses mock Codex processes and needs no Codex login.
 
 ## How to communicate
 
@@ -293,7 +295,9 @@ For automated Codex trigger testing at scale, use:
 uv run scripts/run_eval.py --eval-set <path> --skill-path <path> --runs-per-query 3
 ```
 
-The runner stages candidate metadata in a temporary `.agents/skills/<name>/SKILL.md`, invokes `codex exec --json`, and counts a trigger when the trace shows Codex reading that file. Use implicit queries here; `$skill-name` tests explicit invocation instead of description quality.
+The runner stages candidate metadata in a temporary `.agents/skills/<name>/SKILL.md`, invokes `codex exec --json`, and counts a trigger only after a completed read command exits with code `0`. Use implicit queries here; `$skill-name` tests explicit invocation instead of description quality.
+
+Each query record keeps its attempt statuses. Infrastructure outcomes (`blocked`, `timeout`, `cli_error`, `unexpected_tool_call`) make the record `incomplete`; they do not count as failed triggers. Do not optimize from incomplete results. The runner stops if Codex emits an MCP call before reading the staged skill.
 
 ### Stage 3: BinEval Scoring
 
@@ -366,6 +370,8 @@ Queries must be realistic — concrete, detailed, with file paths, context, abbr
 ```bash
 uv run scripts/run_loop.py --eval-set evals/eval_set.json --skill-path <skill-dir> --model <model-id> --max-iterations 5 --holdout 0.4 --verbose
 ```
+
+The loop defaults to one worker to keep Codex CLI runs serial. Set `--num-workers` explicitly to increase concurrency. If any query is incomplete, the loop stops before asking Codex to change the description.
 
 The loop:
 
@@ -462,6 +468,6 @@ Load on demand, at the point of use named in each mode — never wholesale. Load
 | `scripts/aggregate_benchmark.py` | Benchmark statistics aggregator            |
 | `scripts/generate_report.py`     | HTML report generator                      |
 | `scripts/quick_validate.py`      | Quick validation for packager              |
-| `scripts/test_smoke.py`          | Smoke tests for all scripts (12 tests)     |
+| `scripts/test_smoke.py`          | Local smoke and mocked CLI tests (35 tests) |
 | `scripts/package_skill.py`       | Skill → .skill packager                    |
-| `scripts/utils.py`               | Shared utilities (parse_skill_md)          |
+| `scripts/utils.py`               | Shared utilities and Codex CLI selection   |

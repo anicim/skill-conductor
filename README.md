@@ -32,7 +32,9 @@ npx skills add smixs/skill-conductor
 
 This fork keeps the upstream workflow and adds a Codex runtime. Install `skills/skill-conductor` from the [`codex-port` branch](https://github.com/anicim/skill-conductor/tree/codex-port/skills/skill-conductor) into `~/.agents/skills/skill-conductor` or `%USERPROFILE%\.agents\skills\skill-conductor`.
 
-The port uses `codex exec --json` for trigger evaluation and the authenticated Codex CLI for description improvement. Run `codex login status` before those automated modes; no Anthropic API key is needed.
+The port uses `codex exec --json` for trigger evaluation and the authenticated Codex CLI for description improvement. Run `codex login status` before those automated modes; no Anthropic API key is needed. Set `SKILL_CONDUCTOR_CODEX` to the full `.exe` or `.ps1` path if Codex Desktop and another CLI are both installed.
+
+From `skills/skill-conductor`, verify the local runtime with `uv run scripts/test_smoke.py`. Trigger eval runs one Codex process at a time by default. It counts a trigger only after Codex completes a successful read of the staged `SKILL.md`. Policy blocks, timeouts, CLI errors, and unexpected MCP events remain separate statuses; an incomplete eval stops description optimization.
 
 Codex-specific changes stay isolated in `codex-port`, so upstream updates remain visible and can be merged or rebased later.
 
