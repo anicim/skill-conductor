@@ -3,6 +3,7 @@
 import os
 import random
 import shutil
+import subprocess
 from pathlib import Path
 
 
@@ -42,6 +43,18 @@ def split_evals(
 
 def codex_command() -> list[str]:
     """Return a safe executable command for the Codex CLI."""
+    override = os.environ.get("SKILL_CONDUCTOR_CODEX")
+    if override:
+        executable = Path(override).expanduser()
+        if not executable.is_file():
+            raise FileNotFoundError(f"SKILL_CONDUCTOR_CODEX does not point to a file: {override}")
+        if os.name == "nt" and executable.suffix.lower() == ".ps1":
+            powershell = shutil.which("pwsh") or shutil.which("powershell")
+            if not powershell:
+                raise FileNotFoundError("PowerShell is required to run the SKILL_CONDUCTOR_CODEX .ps1 file.")
+            return [powershell, "-NoProfile", "-NonInteractive", "-File", str(executable)]
+        return [str(executable)]
+
     if os.name == "nt":
         executable = shutil.which("codex.exe")
         if executable:
@@ -61,9 +74,25 @@ def codex_command() -> list[str]:
     raise FileNotFoundError("Codex CLI not found. Install it or add codex to PATH.")
 
 
+def codex_version() -> str:
+    """Return the version string of the selected Codex CLI."""
+    result = subprocess.run(
+        codex_command() + ["--version"], capture_output=True, text=True, check=True, timeout=10
+    )
+    return result.stdout.strip()
+
+
 def codex_environment(isolated_home: Path) -> dict[str, str]:
     """Hide user skills/config while retaining the current Codex login."""
     env = os.environ.copy()
+    for key in (
+        "CODEX_APP_TOOLS_PIPE_PATH",
+        "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+        "CODEX_SESSION_ID",
+        "CODEX_THREAD_ID",
+        "CODEX_TOOL_CALL_ID",
+    ):
+        env.pop(key, None)
     if not env.get("CODEX_HOME"):
         env["CODEX_HOME"] = str(Path.home() / ".codex")
     env["HOME"] = str(isolated_home)

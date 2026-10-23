@@ -9,7 +9,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from scripts.utils import codex_command, codex_environment, parse_skill_md
+try:
+    from .utils import codex_command, codex_environment, parse_skill_md
+except ImportError:
+    from utils import codex_command, codex_environment, parse_skill_md
 
 
 def _run_codex_prompt(prompt: str, model: str | None) -> str:
