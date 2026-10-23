@@ -4,7 +4,7 @@
 
 # Skill Conductor
 
-> A skill that creates, evaluates, and improves other skills. Meta-level.
+> Codex skill for creating, testing, and improving agent skills with trigger evals and evidence-based quality review. Use `$skill-creator` for a straightforward first draft.
 
 [![Release](https://img.shields.io/github/v/release/smixs/skill-conductor)](https://github.com/smixs/skill-conductor/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
