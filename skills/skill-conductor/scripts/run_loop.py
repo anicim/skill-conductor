@@ -7,6 +7,7 @@ overfitting.
 """
 
 import argparse
+import html
 import json
 import sys
 import tempfile
@@ -14,10 +15,16 @@ import time
 import webbrowser
 from pathlib import Path
 
-from scripts.generate_report import generate_html
-from scripts.improve_description import improve_description
-from scripts.run_eval import run_eval
-from scripts.utils import parse_skill_md, split_evals
+try:
+    from .generate_report import generate_html
+    from .improve_description import improve_description
+    from .run_eval import run_eval
+    from .utils import parse_skill_md, split_evals
+except ImportError:
+    from generate_report import generate_html
+    from improve_description import improve_description
+    from run_eval import run_eval
+    from utils import parse_skill_md, split_evals
 
 
 def run_loop(
@@ -72,6 +79,34 @@ def run_loop(
             model=model,
         )
         eval_elapsed = time.time() - t0
+
+        incomplete_results = [result for result in all_results["results"] if result.get("status") == "incomplete"]
+        if incomplete_results:
+            reasons = [
+                result.get("incomplete_reason")
+                or ", ".join(sorted({attempt["status"] for attempt in result.get("attempts", [])}))
+                for result in incomplete_results
+            ]
+            incomplete_reason = "; ".join(reasons)
+            if verbose:
+                print(f"Evaluation incomplete; skipping description improvement: {incomplete_reason}", file=sys.stderr)
+            return {
+                "exit_reason": "incomplete_eval",
+                "incomplete": True,
+                "incomplete_reason": incomplete_reason,
+                "incomplete_results": incomplete_results,
+                "original_description": original_description,
+                "best_description": None,
+                "best_score": None,
+                "best_train_score": None,
+                "best_test_score": None,
+                "final_description": current_description,
+                "iterations_run": iteration,
+                "holdout": holdout,
+                "train_size": len(train_set),
+                "test_size": len(test_set),
+                "history": history,
+            }
 
         # Split results back into train/test by matching queries
         train_queries_set = {q["query"] for q in train_set}
@@ -215,12 +250,12 @@ def run_loop(
     }
 
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run eval + improve loop")
     parser.add_argument("--eval-set", required=True, help="Path to eval set JSON file")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override starting description")
-    parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
+    parser.add_argument("--num-workers", type=int, default=1, help="Number of parallel workers")
     parser.add_argument("--timeout", type=int, default=120, help="Timeout per query in seconds")
     parser.add_argument("--max-iterations", type=int, default=5, help="Max improvement iterations")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
@@ -230,7 +265,11 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     parser.add_argument("--report", default="auto", help="Generate HTML report at this path (default: 'auto' for temp file, 'none' to disable)")
     parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    args = build_parser().parse_args()
 
     eval_set = json.loads(Path(args.eval_set).read_text())
     skill_path = Path(args.skill_path)
@@ -287,12 +326,20 @@ def main():
         (results_dir / "results.json").write_text(json_output)
 
     # Write final HTML report (without auto-refresh)
+    report_html = None
     if live_report_path:
-        live_report_path.write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        if output.get("incomplete"):
+            report_html = (
+                "<!doctype html><html><meta charset='utf-8'><title>Evaluation incomplete</title>"
+                f"<body><h1>Evaluation incomplete</h1><p>{html.escape(output['incomplete_reason'])}</p></body></html>"
+            )
+        else:
+            report_html = generate_html(output, auto_refresh=False, skill_name=name)
+        live_report_path.write_text(report_html)
         print(f"\nReport: {live_report_path}", file=sys.stderr)
 
     if results_dir and live_report_path:
-        (results_dir / "report.html").write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        (results_dir / "report.html").write_text(report_html)
 
     if results_dir:
         print(f"Results saved to: {results_dir}", file=sys.stderr)
