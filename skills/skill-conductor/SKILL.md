@@ -1,9 +1,9 @@
 ---
 name: skill-conductor
 description: >-
-  Build, review, validate, and benchmark agent skills with evidence-based
-  evals. Use when a skill needs trigger testing, quality review, or iterative
-  improvement. For a straightforward new Codex skill, use `$skill-creator`.
+  Create, test, and improve Codex skills with trigger evals and evidence-based
+  quality review. Use when a skill needs activation testing, benchmarking, or
+  description tuning. Use `$skill-creator` for a straightforward first draft.
 ---
 
 # Skill Conductor
