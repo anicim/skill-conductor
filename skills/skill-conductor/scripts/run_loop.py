@@ -14,11 +14,9 @@ import time
 import webbrowser
 from pathlib import Path
 
-import anthropic
-
 from scripts.generate_report import generate_html
 from scripts.improve_description import improve_description
-from scripts.run_eval import find_project_root, run_eval
+from scripts.run_eval import run_eval
 from scripts.utils import parse_skill_md, split_evals
 
 
@@ -32,13 +30,12 @@ def run_loop(
     runs_per_query: int,
     trigger_threshold: float,
     holdout: float,
-    model: str,
+    model: str | None,
     verbose: bool,
     live_report_path: Path | None = None,
     log_dir: Path | None = None,
 ) -> dict:
     """Run the eval + improvement loop."""
-    project_root = find_project_root()
     name, original_description, content = parse_skill_md(skill_path)
     current_description = description_override or original_description
 
@@ -51,7 +48,6 @@ def run_loop(
         train_set = eval_set
         test_set = []
 
-    client = anthropic.Anthropic()
     history = []
     exit_reason = "unknown"
 
@@ -71,7 +67,6 @@ def run_loop(
             description=current_description,
             num_workers=num_workers,
             timeout=timeout,
-            project_root=project_root,
             runs_per_query=runs_per_query,
             trigger_threshold=trigger_threshold,
             model=model,
@@ -176,7 +171,6 @@ def run_loop(
             for h in history
         ]
         new_description = improve_description(
-            client=client,
             skill_name=name,
             skill_content=content,
             current_description=current_description,
@@ -227,12 +221,12 @@ def main():
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")
     parser.add_argument("--description", default=None, help="Override starting description")
     parser.add_argument("--num-workers", type=int, default=10, help="Number of parallel workers")
-    parser.add_argument("--timeout", type=int, default=30, help="Timeout per query in seconds")
+    parser.add_argument("--timeout", type=int, default=120, help="Timeout per query in seconds")
     parser.add_argument("--max-iterations", type=int, default=5, help="Max improvement iterations")
     parser.add_argument("--runs-per-query", type=int, default=3, help="Number of runs per query")
     parser.add_argument("--trigger-threshold", type=float, default=0.5, help="Trigger rate threshold")
     parser.add_argument("--holdout", type=float, default=0.4, help="Fraction of eval set to hold out for testing (0 to disable)")
-    parser.add_argument("--model", required=True, help="Model for improvement")
+    parser.add_argument("--model", default=None, help="Optional Codex model override")
     parser.add_argument("--verbose", action="store_true", help="Print progress to stderr")
     parser.add_argument("--report", default="auto", help="Generate HTML report at this path (default: 'auto' for temp file, 'none' to disable)")
     parser.add_argument("--results-dir", default=None, help="Save all outputs (results.json, report.html, log.txt) to a timestamped subdirectory here")

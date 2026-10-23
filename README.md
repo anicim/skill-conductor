@@ -28,6 +28,14 @@ npx skills add smixs/skill-conductor
 /plugin install skill-conductor@smixs
 ```
 
+### Codex port (`codex-port`)
+
+This fork keeps the upstream workflow and adds a Codex runtime. Install `skills/skill-conductor` from the [`codex-port` branch](https://github.com/anicim/skill-conductor/tree/codex-port/skills/skill-conductor) into `~/.agents/skills/skill-conductor` or `%USERPROFILE%\.agents\skills\skill-conductor`.
+
+The port uses `codex exec --json` for trigger evaluation and the authenticated Codex CLI for description improvement. Run `codex login status` before those automated modes; no Anthropic API key is needed.
+
+Codex-specific changes stay isolated in `codex-port`, so upstream updates remain visible and can be merged or rebased later.
+
 <details>
 <summary><strong>v3.2.0 — Evidence-based upgrade: form-matching, judge calibration, pressure testing</strong></summary>
 

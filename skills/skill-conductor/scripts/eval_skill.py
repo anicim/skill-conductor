@@ -71,11 +71,6 @@ DET_QUESTIONS = {
         "Does the description contain trigger phrases (e.g. 'Use when ...')?",
         "The description has no trigger phrases like 'Use when ...'.",
     ),
-    "DET-DISCOVERY-NEG-TRIGGERS": (
-        "Discovery", False,
-        "Does the description contain negative triggers (e.g. 'Do NOT use for ...')?",
-        "The description has no negative triggers like 'Do NOT use for ...'.",
-    ),
     "DET-DISCOVERY-NO-PROCESS-LEAK": (
         "Discovery", False,
         "Is the description free of multi-step process/workflow language?",
@@ -291,14 +286,6 @@ def eval_skill(skill_path, json_mode=False):
             ok("Description has trigger phrases", "DET-DISCOVERY-TRIGGERS")
         else:
             warn("Description missing trigger phrases (add 'Use when...')", "DET-DISCOVERY-TRIGGERS")
-
-        has_negative = any(phrase in desc_lower for phrase in [
-            "not for", "don't use", "do not use", "not when", "not suitable"
-        ])
-        if has_negative:
-            ok("Description has negative triggers", "DET-DISCOVERY-NEG-TRIGGERS")
-        else:
-            warn("Consider adding negative triggers ('Do NOT use for...')", "DET-DISCOVERY-NEG-TRIGGERS")
 
         # Process leak detection
         process_signals = [

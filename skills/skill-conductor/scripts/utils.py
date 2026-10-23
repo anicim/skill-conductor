@@ -1,6 +1,8 @@
-"""Shared utilities for skill-creator scripts."""
+"""Shared utilities for skill-conductor scripts."""
 
+import os
 import random
+import shutil
 from pathlib import Path
 
 
@@ -36,6 +38,38 @@ def split_evals(
         test += stratum[:n_test]
         train += stratum[n_test:]
     return train, test
+
+
+def codex_command() -> list[str]:
+    """Return a safe executable command for the Codex CLI."""
+    if os.name == "nt":
+        executable = shutil.which("codex.exe")
+        if executable:
+            return [executable]
+
+        powershell = shutil.which("pwsh") or shutil.which("powershell")
+        if powershell:
+            for directory in os.environ.get("PATH", "").split(os.pathsep):
+                candidate = Path(directory) / "codex.ps1"
+                if candidate.is_file():
+                    return [powershell, "-NoProfile", "-NonInteractive", "-File", str(candidate)]
+
+    executable = shutil.which("codex")
+    if executable and Path(executable).suffix.lower() not in {".bat", ".cmd"}:
+        return [executable]
+
+    raise FileNotFoundError("Codex CLI not found. Install it or add codex to PATH.")
+
+
+def codex_environment(isolated_home: Path) -> dict[str, str]:
+    """Hide user skills/config while retaining the current Codex login."""
+    env = os.environ.copy()
+    if not env.get("CODEX_HOME"):
+        env["CODEX_HOME"] = str(Path.home() / ".codex")
+    env["HOME"] = str(isolated_home)
+    if os.name == "nt":
+        env["USERPROFILE"] = str(isolated_home)
+    return env
 
 
 def parse_skill_md(skill_path: Path) -> tuple[str, str, str]:

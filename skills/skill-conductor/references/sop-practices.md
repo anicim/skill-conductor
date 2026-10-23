@@ -43,26 +43,19 @@ Without pre-flight, everything below "gets worked around in its own way".
 
 A skill is a **lens/capability**, not a multi-step workflow. The description states WHAT it is and WHEN to trigger it, but not HOW (the steps live in the body). If the process is baked into the description, the model will "execute the description" and never read the body.
 
-### The canonical description formula
+### Codex description guidance
 
 ```
-[What it does] + Use when [4-5 natural phrasing variations users actually say]
-+ "even if they don't explicitly say '<canonical term>'" + Do NOT use for [negatives]
+[What it does]. Use when [specific task or condition].
 ```
 
-This is the one place the formula lives — everything else points here.
+Keep the description as short as possible while making its task boundary clear. Add one exclusion only when evals expose a realistic near-miss.
 
-Slot 3 is the **pushy clause**, and it's the slot authors skip. Models systematically *undertrigger* skills: they don't reach for one that would have helped. Anthropic's own skill-creator guidance is to make descriptions "a little bit pushy" for exactly this reason — an explicit "even if they don't explicitly say X" forces the agent to consider the skill on phrasings that miss the canonical term. Users say "make this deck less ugly", not "apply the presentation-design skill".
-
-Slot 2 needs 4-5 variations, not one: formal, casual, symptom-first ("my table looks broken"), file-type ("I have a .fig"), and the domain jargon. One phrasing covers one way of asking.
+Do not force a list of synonyms or a generic "even if they don't explicitly say X" clause. Codex guidance favors concise descriptions and warns that broad wording can select a skill for adjacent tasks. Add trigger wording only when implicit evals show a repeatable miss.
 
 ```markdown
-# GOOD: purpose + phrasing variations + pushy clause + negatives
-description: Analyze Figma design files for developer handoff. Use when the user
-uploads a .fig file, asks for design specs, asks how to build a screen from a
-mockup, wants tokens/spacing/colors pulled out of a design, or asks what a
-component should look like in code — even if they don't explicitly say
-"handoff". Do NOT use for Sketch or Adobe XD.
+# GOOD: purpose + narrow trigger boundary
+description: Turn Figma mockups into developer handoff specs. Use when translating a Figma design into implementation guidance.
 
 # BAD: process in the description (the agent skips the body)
 description: Exports Figma assets, then generates specs, then creates Linear
@@ -337,7 +330,8 @@ In addition to the standard REVIEW checklist (Mode 4):
 - Wieringa, Moore, Barnes — "Procedure Writing: Principles and Practices" (Battelle Press, 1998)
 - Toyota TWI (Training Within Industry) — the "Job Instruction" methodology
 - McDonald's Operations Manual — the canonical example of a 600+ page SOP system for a franchise
-- anthropics/skills — `skill-creator` skill, the "pushy" description recommendation against undertriggering — https://github.com/anthropics/skills
+- OpenAI Developers — "Rethinking skills and prompts for GPT-6 Astra" — concise descriptions, narrow activation boundaries, and progressive disclosure — https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra
+- anthropics/skills — `skill-creator` skill, description-writing guidance — https://github.com/anthropics/skills
 - obra/superpowers — `writing-skills` skill, "Match the Form to the Failure" and the wording tests behind it — https://github.com/obra/superpowers
 - softaworks/agent-toolkit — `skill-judge` skill, the Expert / Activation / Redundant taxonomy and the E:A:R ratio — https://github.com/softaworks/agent-toolkit
 - "Guardrails Beat Guidance" — arXiv 2604.11088 — 5000+ Claude Code runs on SWE-bench; negative constraints vs positive directives

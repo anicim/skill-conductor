@@ -13,7 +13,6 @@ Triggers correctly, no false-trigger; description carries purpose + triggers, no
 - `DET-DISCOVERY-NAME-VALID` — critical — "Is name kebab-case, <=64 chars, matching the folder?"
 - `DET-DISCOVERY-DESC-PRESENT` — critical — "Is description present, <=1024 chars, free of angle brackets, and a string (not a YAML list)?"
 - `DET-DISCOVERY-TRIGGERS` — non-critical — "Does the description contain trigger phrases (e.g. 'Use when ...')?"
-- `DET-DISCOVERY-NEG-TRIGGERS` — non-critical — "Does the description contain negative triggers (e.g. 'Do NOT use for ...')?"
 - `DET-DISCOVERY-NO-PROCESS-LEAK` — non-critical — "Is the description free of multi-step process/workflow language?"
 
 ### LLM (source: llm, answered by agents/bineval.md)
@@ -21,9 +20,9 @@ Triggers correctly, no false-trigger; description carries purpose + triggers, no
 - `Q-DISCOVERY-1` — non-critical — maps to P2 / axis Discovery
   - text: "Does the description state, in one phrase, what the skill actually does (its purpose) rather than only when to use it?"
   - violation_example: "Description reads 'Use when the user mentions invoices.' — it names a trigger but never says the skill parses and validates invoice PDFs."
-- `Q-DISCOVERY-2` — non-critical — maps to the pushy description pattern
-  - text: "Does the description broaden the trigger surface — 4-5 natural phrasings a user might actually say, and/or a clause like 'even if the user doesn't explicitly say \"<canonical term>\"'?"
-  - violation_example: "Description triggers only on the single canonical term 'dashboard', with no variations ('chart', 'metrics view', 'display our data'), so the skill never fires when the user phrases it any other way."
+- `Q-DISCOVERY-2` — non-critical — maps to the Codex trigger boundary
+  - text: "Does the description define a clear, appropriately narrow task boundary without pulling in adjacent requests?"
+  - violation_example: "A migration skill says 'Use for database, SQL, or persistence tasks', so it activates for ordinary query writing."
 
 ---
 

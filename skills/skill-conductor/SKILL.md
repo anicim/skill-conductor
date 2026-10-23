@@ -1,25 +1,20 @@
 ---
 name: skill-conductor
-description: >
-  Create, edit, evaluate, and package agent skills. Use when building a new
-  skill from scratch, improving an existing skill, fixing a skill that never
-  triggers or fires unreliably, running evals to test a skill, benchmarking
-  skill performance, optimizing a skill's description, reviewing third-party
-  skills for quality, or packaging skills for distribution — even if the user
-  doesn't explicitly say "skill" (e.g. "teach Claude to do X", "make the
-  agent always follow Y"). Not for using skills or general coding
-  tasks.
+description: >-
+  Build, review, validate, and benchmark agent skills with evidence-based
+  evals. Use when a skill needs trigger testing, quality review, or iterative
+  improvement. For a straightforward new Codex skill, use `$skill-creator`.
 ---
 
 # Skill Conductor
 
 Full lifecycle management for agent skills: **draft → test → review → improve → repeat**.
 
-One skill to rule them all — from architecture to packaging. The core loop is always the same: write something, test it, see what fails, fix it, test again.
+Use Codex `$skill-creator` for a straightforward first draft. Use Conductor when the skill needs measured trigger tests, quality scoring, or repeated improvement.
 
 ## Runtime requirements (pre-flight)
 
-Before any mode that touches scripts (CREATE, IMPROVE, VALIDATE, OPTIMIZE, PACKAGE), run the pre-flight block → **`references/runtime-setup.md`** (checks `uv`, sets `UV_BIN`/`SKILL_CONDUCTOR_DIR`, verifies LLM access). If `uv` is absent, stop and tell the user.
+Before any mode that touches scripts (CREATE, IMPROVE, VALIDATE, OPTIMIZE, PACKAGE), check `uv` using **`references/runtime-setup.md`**. Before automated trigger evals or description optimization, verify Codex CLI login there. If `uv` is absent, stop and tell the user.
 
 ## How to communicate
 
@@ -117,12 +112,12 @@ skill-name/
 ---
 name: kebab-case-name
 description: >
-  [What it does]. Use when [4-5 phrasing variations users actually say] — even
-  if they don't explicitly say "[canonical term]". Do NOT use for [negatives].
+  [What it does]. Use when [specific task or condition]. Add a short exclusion
+  only when evals show a realistic near-miss.
 ---
 ```
 
-The description is the single most important line — it decides whether the skill triggers at all. The full formula, the pushy clause and worked GOOD/BAD examples live in `references/sop-practices.md` Principle #2. Read it before writing one.
+Codex sees the skill name and description before loading its body. Keep the trigger boundary clear and concise; long or broad descriptions can select unrelated skills or lose detail in crowded contexts. Read `references/sop-practices.md` Principle #2 before writing one.
 
 - `name`: lowercase, digits, hyphens only. No consecutive hyphens. Matches folder name. Max 64 chars
 - `description`: max 1024 chars. No angle brackets. No process/workflow steps
@@ -174,7 +169,7 @@ Before the full loop, micro-test the wording of anything you just wrote (5+ fres
 - [ ] `evals/evals.json` exists with 3–5 prompts (see `references/schemas.md`)
 - [ ] Workspace dir created: `<skill-name>-workspace/iteration-1/`
 - [ ] Each eval has a descriptive name (not just `eval-0`) and `eval_metadata.json`
-- [ ] Anthropic key for executor subagents is set
+- [ ] Codex CLI is logged in (`codex login status`) before automated trigger evals
 - [ ] `uv` and `eval-viewer/generate_review.py` are reachable from current working dir
 
 If any item fails — fix before proceeding. A missing workspace dir mid-run loses outputs.
@@ -281,7 +276,7 @@ Three stages, run in order.
 uv run scripts/eval_skill.py <skill-folder>
 ```
 
-Checks: frontmatter, naming, description quality, process leak detection, body size, structure, scripts. Target: 10/10, no warnings.
+Checks: frontmatter, naming, description quality, process leak detection, body size, structure, scripts. Fix critical failures; review noncritical warnings against the skill's evals.
 
 ### Stage 2: Discovery (trigger testing)
 
@@ -292,11 +287,13 @@ Generate 6 test prompts:
 
 Run each in clean session. Target: 6/6 correct.
 
-For automated trigger testing at scale, use:
+For automated Codex trigger testing at scale, use:
 
 ```bash
 uv run scripts/run_eval.py --eval-set <path> --skill-path <path> --runs-per-query 3
 ```
+
+The runner stages candidate metadata in a temporary `.agents/skills/<name>/SKILL.md`, invokes `codex exec --json`, and counts a trigger when the trace shows Codex reading that file. Use implicit queries here; `$skill-name` tests explicit invocation instead of description quality.
 
 ### Stage 3: BinEval Scoring
 
@@ -347,7 +344,7 @@ The checklist exists because these are the failure modes that actually happen in
 
 ## Mode 5: OPTIMIZE
 
-Automated description optimization. The description competes with other skills for Claude's attention — optimization finds the wording that triggers most accurately. The same train/held-out principle now gates body edits too — see Mode 2 Step 3.
+Automated description optimization for Codex. The optimizer uses trigger traces and a held-out set to improve the task boundary without widening it to adjacent requests. The same train/held-out principle gates body edits too — see Mode 2 Step 3.
 
 ### How it works
 
@@ -361,25 +358,19 @@ Queries must be realistic — concrete, detailed, with file paths, context, abbr
 
 **Should-NOT-trigger (10):** Near-misses that share keywords but need something different. Adjacent domains, ambiguous phrasing. "Write fibonacci" as negative for PDF skill = useless — too easy. Make negatives genuinely tricky.
 
-**Triggering mechanics:** Claude only consults skills for tasks it can't handle directly. Simple queries ("read this PDF") won't trigger skills regardless of description — Claude handles them with basic tools. Eval queries must be substantive enough that consulting a skill would help.
+**Triggering mechanics:** Codex sees skill names and descriptions during discovery, then reads `SKILL.md` when it selects a skill. Use substantive implicit queries to test that decision. A `$skill-name` request bypasses description matching, so keep explicit-invocation cases separate.
 
 2. Review queries in the browser: `assets/eval_review.html`
 3. Run the optimization loop:
 
 ```bash
-uv run scripts/run_loop.py \
-  --eval-set evals/eval_set.json \
-  --skill-path <skill-dir> \
-  --model <model-id> \
-  --max-iterations 5 \
-  --holdout 0.4 \
-  --verbose
+uv run scripts/run_loop.py --eval-set evals/eval_set.json --skill-path <skill-dir> --model <model-id> --max-iterations 5 --holdout 0.4 --verbose
 ```
 
 The loop:
 
 - Splits queries into train (60%) and held-out (40%) to prevent overfitting
-- Each iteration: evaluates current description → Claude proposes improvement → re-evaluates
+- Each iteration: evaluates current description → Codex proposes improvement → re-evaluates
 - Improvement model sees only train results (blinded to held-out)
 - Selects the best description by held-out score
 - Opens live HTML report automatically
@@ -389,7 +380,7 @@ The loop:
 | Script                           | Purpose                                    |
 | -------------------------------- | ------------------------------------------ |
 | `scripts/run_eval.py`            | Run trigger evaluation on a description    |
-| `scripts/improve_description.py` | Claude proposes improved description       |
+| `scripts/improve_description.py` | Codex proposes improved description        |
 | `scripts/generate_report.py`     | HTML visualization of optimization history |
 | `scripts/aggregate_benchmark.py` | Statistical aggregation of benchmark runs  |
 
@@ -442,7 +433,7 @@ Creates `skill-name.skill` (zip with .skill extension). Verify: unzip in temp di
 
 ### Description formula
 
-`[What it does]` + `Use when [4-5 phrasings users actually say]` + `even if they don't explicitly say "<canonical term>"` + `Do NOT use for [negatives]` — full rules and examples in `references/sop-practices.md` Principle #2.
+`[What it does]` + `Use when [specific task boundary]` + an exclusion only for likely near-misses supported by evals — full rules and examples in `references/sop-practices.md` Principle #2.
 
 ## Reference Files
 
@@ -460,14 +451,14 @@ Load on demand, at the point of use named in each mode — never wholesale. Load
 | `references/quality-questions.md`| BinEval question bank (deterministic + bank)|
 | `references/pressure-testing.md` | Micro-tests for wording + pressure scenarios for discipline skills |
 | `references/sop-practices.md`    | **Canon: 10 authoring principles (universal)** + deep SOP methodology for procedural skills |
-| `references/runtime-setup.md`    | Pre-flight: uv/env/path checks, LLM-access options |
+| `references/runtime-setup.md`    | Pre-flight: uv and Codex CLI login |
 | `eval-viewer/`                   | Interactive HTML viewer for eval results   |
 | `assets/eval_review.html`        | Trigger eval set editor                    |
 | `scripts/eval_skill.py`          | Structural validation (10-point scoring)   |
 | `scripts/init_skill.py`          | Skill scaffolder                           |
 | `scripts/run_eval.py`            | Trigger evaluation runner                  |
 | `scripts/run_loop.py`            | Eval + improve optimization loop           |
-| `scripts/improve_description.py` | Claude-powered description improvement     |
+| `scripts/improve_description.py` | Codex CLI description improvement           |
 | `scripts/aggregate_benchmark.py` | Benchmark statistics aggregator            |
 | `scripts/generate_report.py`     | HTML report generator                      |
 | `scripts/quick_validate.py`      | Quick validation for packager              |

@@ -1,30 +1,13 @@
 # Runtime setup (pre-flight)
 
-Run this block before any mode that touches scripts (CREATE, IMPROVE, VALIDATE, OPTIMIZE, PACKAGE).
+Run `uv --version` before any mode that uses scripts. Run `codex login status` before automated trigger evals or description optimization. Sign in with `codex login` if needed.
 
-```bash
-# 1. uv (used by every script in scripts/ and eval-viewer/)
-command -v uv >/dev/null || command -v ~/.local/bin/uv >/dev/null \
-  || { echo "FAIL: uv not found. Install via curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
+Run script commands from the `skill-conductor` directory so imports and relative paths resolve. If `uv` is absent, stop and tell the user; do not run scripts directly with Python.
 
-# 2. SKILL_CONDUCTOR_DIR — absolute path to this skill (scripts use relative imports)
-SKILL_CONDUCTOR_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo ~/.claude/skills/skill-conductor)"
+## Codex CLI access
 
-# 3. UV_BIN — full path so subprocess and shell tool both work
-UV_BIN="$(command -v uv || echo ~/.local/bin/uv)"
+`scripts/run_eval.py`, `scripts/run_loop.py`, and `scripts/improve_description.py` call `codex exec`. They use the logged-in Codex CLI account, so no Anthropic SDK or API key is required. Pass `--model <model-id>` to override Codex's default model.
 
-# 4. Optional: claude CLI (only Mode 5 OPTIMIZE)
-command -v claude >/dev/null || echo "WARN: claude CLI absent — Mode 5 OPTIMIZE will fail"
-```
+Automated runs use `--json` for trigger traces, `--ephemeral` to avoid saving sessions, `--sandbox read-only` to prevent file writes, and `--ignore-user-config` to keep user MCP settings out of eval runs. They use a temporary home to hide global skills, while authentication still uses `CODEX_HOME`.
 
-If `uv` is absent, stop and tell the user. Don't fall back to `python3` directly — scripts have inline dependencies (`# /// script` blocks) that require `uv run`.
-
-## LLM access for eval/improve
-
-For Mode 1 Step 6 (eval loop) and Mode 2 (improve), the executor subagent needs LLM access. Three options, in order of preference:
-
-1. `claude` CLI logged in (`claude /login` or `ANTHROPIC_API_KEY` in env). Verify: `claude --print "say ok"` returns `ok` (add `--model <current-model-id>` only if you need a specific model).
-2. Anthropic SDK directly via `uv run --with anthropic ...` if `ANTHROPIC_API_KEY` is set.
-3. On hosts with neither (e.g. OAuth-only Claude with no API key), evals can only be run by the orchestrating agent itself — there's no separate subagent. Mode 1 Step 6 then degrades to: write evals, the user runs them via their own agent, paste outputs back here.
-
-Check the environment up front and tell the user which path applies. Don't pretend to spawn subagents that can't authenticate.
+The eval runner places only candidate skill metadata in a temporary project under `.agents/skills/`, then removes it when the run ends. It does not add files to the skill being evaluated.
