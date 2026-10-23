@@ -341,8 +341,9 @@ def test_timeout_applies_after_stdout_closes():
 
         process = ClosedOutputProcess()
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(run_eval.subprocess, "Popen", return_value=process):
-                attempt = run_eval.run_single_query("query", "test-skill", "test description", timeout=1)
+            with mock.patch.object(run_eval, "codex_command", return_value=["fake-codex"]):
+                with mock.patch.object(run_eval.subprocess, "Popen", return_value=process):
+                    attempt = run_eval.run_single_query("query", "test-skill", "test description", timeout=1)
         assert attempt.status == "timeout"
     finally:
         sys.path.pop(0)

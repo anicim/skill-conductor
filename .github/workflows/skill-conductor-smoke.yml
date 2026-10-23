@@ -23,3 +23,5 @@ jobs:
       - name: Run local smoke tests
         run: uv run scripts/test_smoke.py
         working-directory: skills/skill-conductor
+        env:
+          PYTHONUTF8: "1"
